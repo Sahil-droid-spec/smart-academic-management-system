@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SAS — Dean</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">&#127979;</div>
+    <div>
+      <div class="sidebar-logo-text">SAS</div>
+      <div class="sidebar-logo-sub">Dean's Office</div>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Navigation</div>
+    <a class="nav-item active" href="#" onclick="showTab('overview',this); return false;">Overview</a>
+    <a class="nav-item" href="#" onclick="showTab('students',this); return false;">Students</a>
+    <a class="nav-item" href="#" onclick="showTab('faculty',this); return false;">Faculty</a>
+    <a class="nav-item" href="#" onclick="showTab('analytics',this); return false;">Analytics</a>
+    <a class="nav-item" href="#" onclick="showTab('notices',this); return false;">Notices</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar" style="background:var(--gold)">{{ current_user.name[0] }}</div>
+      <div>
+        <div class="user-name">{{ current_user.name.split()[1] }}</div>
+        <div class="user-role">Dean</div>
+      </div>
+    </div>
+    <a href="{{ url_for('logout') }}" class="btn-logout">Sign Out</a>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Dean's Dashboard</div>
+      <div class="page-subtitle">Institutional overview</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('noticeModal')">Post Notice</button>
+  </div>
+
+  <div class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash-{{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <!-- OVERVIEW -->
+    <div id="tab-overview" class="tab-pane">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon">&#128101;</div>
+          <div class="stat-val" style="color:var(--blue)">{{ total_students }}</div>
+          <div class="stat-label">Total Students</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#128104;&#8205;&#127979;</div>
+          <div class="stat-val" style="color:var(--green)">{{ faculties|length }}</div>
+          <div class="stat-label">Faculty Members</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#127942;</div>
+          <div class="stat-val" style="color:var(--green)">{{ avg_cgpa }}</div>
+          <div class="stat-label">Average CGPA</div>
+          <div class="stat-badge {{ 'badge-green' if avg_cgpa >= 7.0 else 'badge-orange' }}">{{ 'Good' if avg_cgpa >= 7.0 else 'Needs Attention' }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#9888;</div>
+          <div class="stat-val" style="color:var(--red)">{{ low_att_count }}</div>
+          <div class="stat-label">Low Attendance</div>
+          <div class="stat-badge badge-red">Below 75%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#128200;</div>
+          <div class="stat-val" style="color:var(--gold)">{{ low_cgpa|length }}</div>
+          <div class="stat-label">Low CGPA</div>
+          <div class="stat-badge badge-orange">Below 6.0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#128218;</div>
+          <div class="stat-val" style="color:var(--sub)">{{ courses|length }}</div>
+          <div class="stat-label">Active Courses</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Top Performers</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Student</th><th>Branch</th><th>CGPA</th></tr></thead>
+              <tbody>
+                {% for s in students[:5] %}
+                <tr>
+                  <td>
+                    <div style="font-weight:500;">{{ s.user.name }}</div>
+                    <div style="font-size:11px;color:var(--sub);">{{ s.student_id }}</div>
+                  </td>
+                  <td style="color:var(--sub);font-size:13px;">{{ s.branch }}</td>
+                  <td style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--green)">{{ s.cgpa }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title" style="color:var(--gold);">Needs Attention</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Student</th><th>Branch</th><th>CGPA</th></tr></thead>
+              <tbody>
+                {% if low_cgpa %}
+                  {% for s in low_cgpa %}
+                  <tr>
+                    <td>
+                      <div style="font-weight:500;">{{ s.user.name }}</div>
+                      <div style="font-size:11px;color:var(--sub);">{{ s.student_id }}</div>
+                    </td>
+                    <td style="color:var(--sub);font-size:13px;">{{ s.branch }}</td>
+                    <td style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--red)">{{ s.cgpa }}</td>
+                  </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="3" style="text-align:center;color:var(--sub);padding:20px;">No students below 6.0</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STUDENTS -->
+    <div id="tab-students" class="tab-pane" style="display:none">
+      <div class="section-header">
+        <div class="section-title">All Students</div>
+        <input type="text" class="form-control" style="max-width:220px;" placeholder="Search..." oninput="filterTable(this.value,'studentsTable')"/>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table id="studentsTable">
+            <thead><tr><th>Name</th><th>ID</th><th>Branch</th><th>Year</th><th>Semester</th><th>CGPA</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for s in students %}
+              <tr>
+                <td style="font-weight:500;">{{ s.user.name }}</td>
+                <td style="color:var(--sub);font-size:12px;">{{ s.student_id }}</td>
+                <td>{{ s.branch }}</td>
+                <td>{{ s.year }}</td>
+                <td>{{ s.semester }}</td>
+                <td style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:{{ 'var(--green)' if s.cgpa >= 7.5 else ('var(--gold)' if s.cgpa >= 6.0 else 'var(--red)') }}">{{ s.cgpa }}</td>
+                <td>
+                  {% if s.cgpa >= 8.5 %}<span class="stat-badge badge-green">Excellent</span>
+                  {% elif s.cgpa >= 7.0 %}<span class="stat-badge badge-blue">Good</span>
+                  {% elif s.cgpa >= 5.5 %}<span class="stat-badge badge-orange">Average</span>
+                  {% else %}<span class="stat-badge badge-red">At Risk</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FACULTY -->
+    <div id="tab-faculty" class="tab-pane" style="display:none">
+      <div class="section-header"><div class="section-title">Faculty</div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+        {% for fp in faculties %}
+        <div class="card">
+          <div class="card-header">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:40px;height:40px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#fff;flex-shrink:0;">{{ fp.user.name[0] }}</div>
+              <div>
+                <div class="card-title">{{ fp.user.name }}</div>
+                <div style="font-size:12px;color:var(--sub);">{{ fp.designation }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:5px;">
+            <div style="font-size:13px;"><span style="color:var(--sub);">ID:</span> {{ fp.faculty_id }}</div>
+            <div style="font-size:13px;"><span style="color:var(--sub);">Dept:</span> {{ fp.department }}</div>
+            <div style="font-size:13px;"><span style="color:var(--sub);">Courses:</span> {{ fp.courses|length }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div id="tab-analytics" class="tab-pane" style="display:none">
+      <div class="section-header"><div class="section-title">Grade Distribution</div></div>
+      <div class="card">
+        <div class="card-body">
+          {% set max_count = grade_dist.values()|max %}
+          {% for letter, count in grade_dist.items() %}
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+            <div style="width:28px;text-align:center;">
+              <span class="grade-pill grade-{{ letter.replace('+','p') if letter != 'F' else 'F' }}" style="font-size:11px;">{{ letter }}</span>
+            </div>
+            <div style="flex:1;background:var(--bg2);border-radius:99px;height:8px;overflow:hidden;">
+              <div style="height:100%;border-radius:99px;background:var(--gold);width:{{ (count / max_count * 100) if max_count > 0 else 0 }}%;transition:width 0.6s ease;"></div>
+            </div>
+            <div style="width:20px;text-align:right;font-size:13px;color:var(--sub);font-weight:500;">{{ count }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-top:20px;"><div class="section-title">CGPA Distribution</div></div>
+      <div class="card">
+        <div class="card-body">
+          {% set ranges = [('9.0 – 10.0', 9.0, 10.1, 'green'), ('8.0 – 8.9', 8.0, 9.0, 'green'), ('7.0 – 7.9', 7.0, 8.0, 'blue'), ('6.0 – 6.9', 6.0, 7.0, 'orange'), ('Below 6.0', 0, 6.0, 'red')] %}
+          {% for label, lo, hi, color in ranges %}
+            {% set cnt = students|selectattr('cgpa','ge',lo)|selectattr('cgpa','lt',hi)|list|length %}
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+              <div style="width:100px;font-size:12px;color:var(--sub);">{{ label }}</div>
+              <div style="flex:1;background:var(--bg2);border-radius:99px;height:8px;overflow:hidden;">
+                <div style="height:100%;border-radius:99px;background:var(--{{ color }});width:{{ (cnt / total_students * 100) if total_students > 0 else 0 }}%;transition:width 0.6s ease;"></div>
+              </div>
+              <div style="width:20px;text-align:right;font-size:13px;font-weight:600;">{{ cnt }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTICES -->
+    <div id="tab-notices" class="tab-pane" style="display:none">
+      <div class="section-header">
+        <div class="section-title">Notices</div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('noticeModal')">Post Notice</button>
+      </div>
+      {% for n in notices %}
+      <div class="notice-item {{ 'pinned' if n.pinned }}" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <div style="flex:1;">
+          <div class="notice-title">{% if n.pinned %}<span class="pin-tag">Pinned</span>{% endif %}{{ n.title }}</div>
+          <div class="notice-body">{{ n.body }}</div>
+          <div class="notice-meta">{{ n.author.name }} &middot; {{ n.created_at.strftime('%d %b %Y') }}</div>
+        </div>
+        <form method="POST" action="{{ url_for('delete_notice', nid=n.id) }}" onsubmit="return confirm('Delete this notice?')">
+          <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+
+<!-- NOTICE MODAL -->
+<div class="modal-overlay" id="noticeModal">
+  <div class="modal">
+    <div class="modal-title">Post a Notice</div>
+    <form method="POST" action="{{ url_for('post_notice') }}">
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <input type="text" name="title" class="form-control" placeholder="Notice title" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Content</label>
+        <textarea name="body" class="form-control" rows="4" placeholder="Notice content" required></textarea>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" name="pinned" id="pinNotice" style="width:15px;height:15px;"/>
+        <label for="pinNotice" style="font-size:13px;color:var(--text);">Pin this notice</label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('noticeModal')">Cancel</button>
+        <button type="submit" class="btn btn-success">Post</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

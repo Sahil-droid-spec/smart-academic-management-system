@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SAS — Faculty</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">&#127979;</div>
+    <div>
+      <div class="sidebar-logo-text">SAS</div>
+      <div class="sidebar-logo-sub">Faculty Portal</div>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Navigation</div>
+    <a class="nav-item active" href="#" onclick="showTab('overview',this); return false;">Overview</a>
+    <a class="nav-item" href="#" onclick="showTab('courses',this); return false;">Courses</a>
+    <a class="nav-item" href="#" onclick="showTab('notices',this); return false;">Notices</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar" style="background:var(--blue)">{{ current_user.name[0] }}</div>
+      <div>
+        <div class="user-name">{{ current_user.name.split()[1] }}</div>
+        <div class="user-role">{{ fp.designation }}</div>
+      </div>
+    </div>
+    <a href="{{ url_for('logout') }}" class="btn-logout">Sign Out</a>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title">{{ current_user.name }}</div>
+      <div class="page-subtitle">{{ fp.department }} &middot; {{ fp.faculty_id }}</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('noticeModal')">Post Notice</button>
+  </div>
+
+  <div class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash-{{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <!-- OVERVIEW -->
+    <div id="tab-overview" class="tab-pane">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon">&#128101;</div>
+          <div class="stat-val" style="color:var(--blue)">{{ total_students }}</div>
+          <div class="stat-label">Total Students</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#128218;</div>
+          <div class="stat-val" style="color:var(--green)">{{ course_stats|length }}</div>
+          <div class="stat-label">Courses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#9888;</div>
+          <div class="stat-val" style="color:var(--red)">{{ course_stats|sum(attribute='at_risk') }}</div>
+          <div class="stat-label">At-Risk Students</div>
+          <div class="stat-badge badge-red">Below 75%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#128200;</div>
+          <div class="stat-val" style="color:var(--gold)">
+            {% if course_stats %}{{ "%.1f"|format(course_stats|sum(attribute='avg_grade') / course_stats|length) }}{% else %}—{% endif %}
+          </div>
+          <div class="stat-label">Overall Avg Grade</div>
+        </div>
+      </div>
+
+      {% for cs in course_stats %}
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">{{ cs.course.name }}</div>
+            <div style="font-size:12px;color:var(--sub);margin-top:2px;">{{ cs.course.code }} &middot; {{ cs.course.credits }} Credits &middot; Sem {{ cs.course.semester }}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="stat-badge badge-blue">{{ cs.count }} Students</span>
+            {% if cs.at_risk > 0 %}<span class="stat-badge badge-red">{{ cs.at_risk }} At Risk</span>{% endif %}
+          </div>
+        </div>
+        {% if cs.enrollments %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Student</th><th>ID</th><th>Attendance</th><th>Internal</th><th>External</th><th>Grade</th><th>Letter</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              {% for e in cs.enrollments %}
+              <tr>
+                <td style="font-weight:500;">{{ e.student.user.name }}</td>
+                <td style="color:var(--sub);font-size:12px;">{{ e.student.student_id }}</td>
+                <td>
+                  <div class="att-bar-wrap att-{{ e.attendance_status }}">
+                    <div class="att-bar-bg" style="min-width:70px;"><div class="att-bar-fill" style="width:{{ e.attendance_pct }}%"></div></div>
+                    <div class="att-pct">{{ e.attendance_pct }}%</div>
+                  </div>
+                </td>
+                <td>{{ e.internals if e.internals else '—' }}</td>
+                <td>{{ e.externals if e.externals else '—' }}</td>
+                <td style="font-weight:600;">{{ e.grade if e.grade else '—' }}</td>
+                <td><span class="grade-pill grade-{{ e.grade_letter.replace('+','p') if e.grade_letter != 'N/A' else 'NA' }}">{{ e.grade_letter }}</span></td>
+                <td><button class="btn btn-outline btn-sm" onclick="openEditModal({{ e.id }})">Edit</button></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <div class="card-body" style="color:var(--sub);">No students enrolled.</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- COURSES -->
+    <div id="tab-courses" class="tab-pane" style="display:none">
+      <div class="section-header"><div class="section-title">My Courses</div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;">
+        {% for cs in course_stats %}
+        <div class="stat-card">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;">{{ cs.course.name }}</div>
+          <div style="font-size:12px;color:var(--sub);margin-bottom:10px;">{{ cs.course.code }} &middot; {{ cs.course.credits }} Cr</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <span class="stat-badge badge-blue">{{ cs.count }} Students</span>
+            <span class="stat-badge badge-green">Avg {{ cs.avg_grade }}/10</span>
+            <span class="stat-badge badge-orange">{{ cs.avg_att }}% Att.</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- NOTICES -->
+    <div id="tab-notices" class="tab-pane" style="display:none">
+      <div class="section-header">
+        <div class="section-title">Notices</div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('noticeModal')">Post Notice</button>
+      </div>
+      {% for n in notices %}
+      <div class="notice-item {{ 'pinned' if n.pinned }}">
+        <div class="notice-title">{% if n.pinned %}<span class="pin-tag">Pinned</span>{% endif %}{{ n.title }}</div>
+        <div class="notice-body">{{ n.body }}</div>
+        <div class="notice-meta">{{ n.author.name }} &middot; {{ n.created_at.strftime('%d %b %Y') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">Update Student Record</div>
+    <input type="hidden" id="editId"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="form-group">
+        <label class="form-label">Internal (/30)</label>
+        <input type="number" class="form-control" id="editInternals" min="0" max="30" step="0.5"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">External (/70)</label>
+        <input type="number" class="form-control" id="editExternals" min="0" max="70" step="0.5"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Grade (/10)</label>
+        <input type="number" class="form-control" id="editGrade" min="0" max="10" step="0.5"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Attendance (%)</label>
+        <input type="number" class="form-control" id="editAttendance" min="0" max="100" step="0.5"/>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGrade()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTICE MODAL -->
+<div class="modal-overlay" id="noticeModal">
+  <div class="modal">
+    <div class="modal-title">Post a Notice</div>
+    <form method="POST" action="{{ url_for('post_notice') }}">
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <input type="text" name="title" class="form-control" placeholder="Notice title" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Content</label>
+        <textarea name="body" class="form-control" rows="4" placeholder="Notice content" required></textarea>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" name="pinned" id="pinNotice" style="width:15px;height:15px;"/>
+        <label for="pinNotice" style="font-size:13px;color:var(--text);">Pin this notice</label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('noticeModal')">Cancel</button>
+        <button type="submit" class="btn btn-success">Post</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script>
+function openEditModal(id) {
+  fetch('/api/enrollment/' + id)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('editId').value          = d.id;
+      document.getElementById('editGrade').value       = d.grade ?? '';
+      document.getElementById('editAttendance').value  = d.attendance_pct ?? '';
+      document.getElementById('editInternals').value   = d.internals ?? '';
+      document.getElementById('editExternals').value   = d.externals ?? '';
+      openModal('editModal');
+    });
+}
+function saveGrade() {
+  fetch('/faculty/update-grade', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      enrollment_id: parseInt(document.getElementById('editId').value),
+      grade:       parseFloat(document.getElementById('editGrade').value)      || null,
+      attendance:  parseFloat(document.getElementById('editAttendance').value) || null,
+      internals:   parseFloat(document.getElementById('editInternals').value)  || null,
+      externals:   parseFloat(document.getElementById('editExternals').value)  || null,
+    })
+  }).then(r => r.json()).then(d => {
+    if (d.success) { closeModal('editModal'); location.reload(); }
+    else alert('Error: ' + d.error);
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SAS — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #F5F0E8; --white: #FDFBF7; --border: #DDD8CE; --border2: #C8C2B6;
+      --gold:   #A67C3C; --gold2: #C49A4E; --text: #1C1917; --sub: #78716C;
+      --sub2:   #A8A29E; --dark: #1C1917; --green: #3D7A5F; --red: #B54A3F;
+    }
+    body {
+      background: var(--bg);
+      font-family: 'IBM Plex Sans', sans-serif;
+      color: var(--text); min-height: 100vh;
+      display: grid; grid-template-columns: 1fr 1fr;
+    }
+    .left {
+      background: var(--dark);
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      padding: 52px 56px; position: relative; overflow: hidden;
+    }
+    .left::before {
+      content: ''; position: absolute;
+      bottom: -100px; right: -100px;
+      width: 440px; height: 440px; border-radius: 50%;
+      border: 1px solid rgba(166,124,60,0.12);
+    }
+    .left::after {
+      content: ''; position: absolute;
+      bottom: -50px; right: -50px;
+      width: 300px; height: 300px; border-radius: 50%;
+      border: 1px solid rgba(166,124,60,0.08);
+    }
+    .left-logo { display: flex; align-items: center; gap: 14px; }
+    .left-logo-icon {
+      width: 42px; height: 42px; background: var(--gold);
+      border-radius: 9px; display: flex; align-items: center;
+      justify-content: center; font-size: 20px;
+    }
+    .left-logo-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 26px; font-weight: 700; color: #FAF7F2;
+    }
+    .left-logo-sub {
+      font-size: 9.5px; color: rgba(255,255,255,0.28);
+      text-transform: uppercase; letter-spacing: 1.5px;
+      font-weight: 300; margin-top: 1px;
+    }
+    .left-hero { position: relative; z-index: 1; }
+    .left-hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 50px; font-weight: 600; color: #FAF7F2;
+      line-height: 1.12; letter-spacing: -0.5px; margin-bottom: 18px;
+    }
+    .left-hero h1 em { font-style: italic; color: var(--gold2); }
+    .left-hero p {
+      font-size: 14px; color: rgba(255,255,255,0.38);
+      line-height: 1.7; max-width: 340px; font-weight: 300;
+    }
+    .left-stats { display: flex; gap: 32px; position: relative; z-index: 1; }
+    .left-stat-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 26px; font-weight: 600; color: var(--gold2);
+    }
+    .left-stat-label { font-size: 11px; color: rgba(255,255,255,0.28); margin-top: 2px; font-weight: 300; }
+
+    .right {
+      display: flex; align-items: center;
+      justify-content: center; padding: 52px 56px;
+    }
+    .form-wrap { width: 100%; max-width: 360px; animation: slideUp 0.35s ease both; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .form-heading {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 34px; font-weight: 600; color: var(--text);
+      letter-spacing: -0.3px; margin-bottom: 6px;
+    }
+    .form-sub { font-size: 13px; color: var(--sub); margin-bottom: 34px; font-weight: 300; }
+    .fg { margin-bottom: 18px; }
+    .flabel {
+      display: block; font-size: 10.5px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: var(--sub); margin-bottom: 7px;
+    }
+    input {
+      width: 100%; padding: 11px 14px;
+      background: var(--white); border: 1px solid var(--border2);
+      border-radius: 6px; color: var(--text); font-size: 14px;
+      font-family: 'IBM Plex Sans', sans-serif; outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(166,124,60,0.09); }
+    input::placeholder { color: var(--sub2); }
+    .btn-login {
+      width: 100%; padding: 12px;
+      background: var(--dark); color: #FAF7F2;
+      border: none; border-radius: 6px;
+      font-size: 14px; font-weight: 500;
+      font-family: 'IBM Plex Sans', sans-serif;
+      cursor: pointer; margin-top: 6px; transition: background 0.15s;
+    }
+    .btn-login:hover { background: #2C2825; }
+    .error-box {
+      background: #FBF0EF; border: 1px solid rgba(181,74,63,0.22);
+      border-radius: 6px; padding: 10px 14px;
+      font-size: 13px; color: var(--red); margin-bottom: 18px;
+    }
+    .divider {
+      display: flex; align-items: center;
+      gap: 12px; margin: 26px 0 18px;
+    }
+    .divider-line { flex: 1; height: 1px; background: var(--border); }
+    .divider-text { font-size: 11px; color: var(--sub2); letter-spacing: 0.4px; }
+    .demo-label {
+      font-size: 10.5px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: var(--sub2); margin-bottom: 10px;
+    }
+    .demo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .demo-btn {
+      padding: 9px 6px; background: var(--white);
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: 11.5px; color: var(--sub); cursor: pointer;
+      text-align: center; transition: border-color 0.15s, color 0.15s;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    .demo-btn:hover { border-color: var(--gold); color: var(--text); }
+    .demo-btn strong { display: block; color: var(--text); font-size: 12.5px; margin-bottom: 2px; font-weight: 500; }
+    .role-tag {
+      display: inline-block; padding: 1px 6px; border-radius: 3px;
+      font-size: 9.5px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.4px; margin-bottom: 3px;
+    }
+    .role-student { background: #EBF5F0; color: #3D7A5F; }
+    .role-faculty { background: #EAF0F9; color: #3B6EA5; }
+    .role-dean    { background: #FBF4E6; color: #A67C3C; }
+    @media (max-width: 860px) { body { grid-template-columns: 1fr; } .left { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="left">
+    <div class="left-logo">
+      <div class="left-logo-icon">&#127979;</div>
+      <div>
+        <div class="left-logo-text">SAS</div>
+        <div class="left-logo-sub">Student Advisory System</div>
+      </div>
+    </div>
+    <div class="left-hero">
+      <h1>Your academic<br/>journey,<br/><em>organised.</em></h1>
+      <p>Track grades, attendance, and get guidance from your AI academic advisor — all in one place.</p>
+    </div>
+    <div class="left-stats">
+      <div><div class="left-stat-num">4</div><div class="left-stat-label">Students</div></div>
+      <div><div class="left-stat-num">8</div><div class="left-stat-label">Courses</div></div>
+      <div><div class="left-stat-num">AI</div><div class="left-stat-label">Advisor</div></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="form-wrap">
+      <div class="form-heading">Sign in</div>
+      <div class="form-sub">Enter your credentials to access the portal</div>
+
+      {% if error %}
+      <div class="error-box">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST">
+        <div class="fg">
+          <label class="flabel" for="username">Username</label>
+          <input type="text" id="username" name="username" placeholder="e.g. student1" autocomplete="username" required/>
+        </div>
+        <div class="fg">
+          <label class="flabel" for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Enter password" autocomplete="current-password" required/>
+        </div>
+        <button type="submit" class="btn-login">Continue</button>
+      </form>
+
+      <div class="divider">
+        <div class="divider-line"></div>
+        <div class="divider-text">Quick Access</div>
+        <div class="divider-line"></div>
+      </div>
+
+      <div class="demo-label">Demo Accounts</div>
+      <div class="demo-grid">
+        <button class="demo-btn" onclick="fill('student1','student123')">
+          <span class="role-tag role-student">Student</span>
+          <strong>Arjun</strong>student1
+        </button>
+        <button class="demo-btn" onclick="fill('faculty1','faculty123')">
+          <span class="role-tag role-faculty">Faculty</span>
+          <strong>Dr. Priya</strong>faculty1
+        </button>
+        <button class="demo-btn" onclick="fill('dean','dean123')">
+          <span class="role-tag role-dean">Dean</span>
+          <strong>Dr. Ramesh</strong>dean
+        </button>
+      </div>
+    </div>
+  </div>
+  <script>
+    function fill(u,p) {
+      document.getElementById('username').value = u;
+      document.getElementById('password').value = p;
+    }
+  </script>
+</body>
+</html>

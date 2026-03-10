@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SAS — Student</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">&#127979;</div>
+    <div>
+      <div class="sidebar-logo-text">SAS</div>
+      <div class="sidebar-logo-sub">Student Portal</div>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Navigation</div>
+    <a class="nav-item active" href="#" onclick="showTab('overview',this); return false;">Overview</a>
+    <a class="nav-item" href="#" onclick="showTab('courses',this); return false;">Courses</a>
+    <a class="nav-item" href="#" onclick="showTab('attendance',this); return false;">Attendance</a>
+    <a class="nav-item" href="#" onclick="showTab('advisor',this); loadHistory(); return false;">Academic Advisor</a>
+    <a class="nav-item" href="#" onclick="showTab('notices',this); return false;">Notices</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar">{{ current_user.name[0] }}</div>
+      <div>
+        <div class="user-name">{{ current_user.name.split()[0] }}</div>
+        <div class="user-role">{{ profile.student_id }} &middot; Year {{ profile.year }}</div>
+      </div>
+    </div>
+    <a href="{{ url_for('logout') }}" class="btn-logout">Sign Out</a>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title">{{ current_user.name }}</div>
+      <div class="page-subtitle">{{ profile.branch }} &middot; Semester {{ profile.semester }} &middot; {{ profile.student_id }}</div>
+    </div>
+  </div>
+
+  <div class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash-{{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <!-- OVERVIEW -->
+    <div id="tab-overview" class="tab-pane">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon">&#127942;</div>
+          <div class="stat-val" style="color:var(--green)">{{ profile.cgpa }}</div>
+          <div class="stat-label">Current CGPA</div>
+          <div class="stat-badge {{ 'badge-green' if profile.cgpa >= 7.5 else ('badge-orange' if profile.cgpa >= 6.0 else 'badge-red') }}">
+            {{ 'Excellent' if profile.cgpa >= 8.5 else ('Good' if profile.cgpa >= 7.0 else ('Average' if profile.cgpa >= 5.5 else 'Needs Work')) }}
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#128203;</div>
+          <div class="stat-val" style="color:{{ 'var(--green)' if avg_attendance >= 75 else 'var(--red)' }}">{{ avg_attendance }}%</div>
+          <div class="stat-label">Avg Attendance</div>
+          <div class="stat-badge {{ 'badge-green' if avg_attendance >= 75 else 'badge-red' }}">
+            {{ 'Safe' if avg_attendance >= 75 else 'At Risk' }}
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#128218;</div>
+          <div class="stat-val" style="color:var(--blue)">{{ enrollments|length }}</div>
+          <div class="stat-label">Active Courses</div>
+          <div class="stat-badge badge-blue">Sem {{ profile.semester }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#9989;</div>
+          <div class="stat-val" style="color:var(--gold)">{{ earned_credits }}/{{ total_credits }}</div>
+          <div class="stat-label">Credits Earned</div>
+          <div class="stat-badge badge-orange">Year {{ profile.year }}</div>
+        </div>
+      </div>
+
+      {% if at_risk_courses %}
+      <div class="card" style="border-color:rgba(181,74,63,0.30); margin-bottom:18px;">
+        <div class="card-header" style="background:#FBF0EF;">
+          <span style="color:var(--red); font-weight:500;">Attendance Warning</span>
+        </div>
+        <div class="card-body">
+          {% for e in at_risk_courses %}
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span>{{ e.course.name }}</span>
+            <span style="color:var(--red);font-weight:600;font-size:13px;">{{ e.attendance_pct }}% — Below 75%</span>
+          </div>
+          {% endfor %}
+          <p style="font-size:13px;color:var(--sub);margin-top:12px;">Contact the Dean's office with supporting documents if needed.</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Grade Summary</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Course</th><th>Credits</th><th>Internal /30</th><th>External /70</th><th>Grade /10</th><th>Letter</th></tr></thead>
+            <tbody>
+              {% for e in enrollments %}
+              <tr>
+                <td>
+                  <div style="font-weight:500;">{{ e.course.code }}</div>
+                  <div style="color:var(--sub);font-size:12px;">{{ e.course.name }}</div>
+                </td>
+                <td>{{ e.course.credits }}</td>
+                <td>{{ e.internals if e.internals else '—' }}</td>
+                <td>{{ e.externals if e.externals else '—' }}</td>
+                <td style="font-weight:600;">{{ e.grade if e.grade else '—' }}</td>
+                <td><span class="grade-pill grade-{{ e.grade_letter.replace('+','p') if e.grade_letter != 'N/A' else 'NA' }}">{{ e.grade_letter }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COURSES -->
+    <div id="tab-courses" class="tab-pane" style="display:none">
+      <div class="section-header"><div class="section-title">Courses — Semester {{ profile.semester }}</div></div>
+      {% for e in enrollments %}
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">{{ e.course.name }}</div>
+            <div style="font-size:12px;color:var(--sub);margin-top:2px;">{{ e.course.code }} &middot; {{ e.course.credits }} Credits</div>
+          </div>
+          <span class="grade-pill grade-{{ e.grade_letter.replace('+','p') if e.grade_letter != 'N/A' else 'NA' }}" style="font-size:14px;padding:5px 12px;">{{ e.grade_letter }}</span>
+        </div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;">
+            <div>
+              <div style="font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Grade Point</div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;">{{ e.grade if e.grade else '—' }} <span style="font-size:13px;color:var(--sub);">/10</span></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Internals</div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;">{{ e.internals if e.internals else '—' }} <span style="font-size:13px;color:var(--sub);">/30</span></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Externals</div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;">{{ e.externals if e.externals else '—' }} <span style="font-size:13px;color:var(--sub);">/70</span></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Attendance</div>
+              <div class="att-bar-wrap att-{{ e.attendance_status }}">
+                <div class="att-bar-bg"><div class="att-bar-fill" style="width:{{ e.attendance_pct }}%"></div></div>
+                <div class="att-pct">{{ e.attendance_pct }}%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ATTENDANCE -->
+    <div id="tab-attendance" class="tab-pane" style="display:none">
+      <div class="section-header">
+        <div class="section-title">Attendance Tracker</div>
+        <span style="font-size:13px;color:var(--sub);">75% minimum required</span>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Course</th><th>Percentage</th><th>Progress</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for e in enrollments %}
+              <tr>
+                <td>
+                  <div style="font-weight:500;">{{ e.course.name }}</div>
+                  <div style="font-size:12px;color:var(--sub);">{{ e.course.code }}</div>
+                </td>
+                <td style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:{{ 'var(--green)' if e.attendance_pct >= 75 else ('var(--gold)' if e.attendance_pct >= 65 else 'var(--red)') }}">{{ e.attendance_pct }}%</td>
+                <td style="min-width:160px;">
+                  <div class="att-bar-wrap att-{{ e.attendance_status }}">
+                    <div class="att-bar-bg" style="min-width:100px;"><div class="att-bar-fill" style="width:{{ e.attendance_pct }}%"></div></div>
+                  </div>
+                </td>
+                <td>
+                  {% if e.attendance_pct >= 75 %}<span class="stat-badge badge-green">Safe</span>
+                  {% elif e.attendance_pct >= 65 %}<span class="stat-badge badge-orange">Warning</span>
+                  {% else %}<span class="stat-badge badge-red">Detained Risk</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADVISOR -->
+    <div id="tab-advisor" class="tab-pane" style="display:none">
+      <div class="section-header">
+        <div class="section-title">Academic Advisor</div>
+        <button class="btn btn-outline btn-sm" onclick="clearChat()">Clear Chat</button>
+      </div>
+      <div class="card" style="overflow:hidden;">
+        <div class="chat-wrap">
+          <div class="chat-messages" id="chatMessages">
+            <div class="msg assistant">
+              <div class="msg-avatar">A</div>
+              <div class="msg-bubble">
+                <strong>Hello {{ current_user.name.split()[0] }},</strong><br/>
+                I am your Academic Advisor. I can help with grades, CGPA, attendance, study strategies, and placement preparation.<br/><br/>
+                What would you like to discuss today?
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Ask about grades, study tips, placements..."/>
+            <button class="chat-send" id="chatSend" onclick="sendMessage()">Send</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+        <button class="btn btn-outline btn-sm" onclick="quickAsk('How can I improve my CGPA?')">Improve CGPA</button>
+        <button class="btn btn-outline btn-sm" onclick="quickAsk('Tips for exam preparation')">Exam Tips</button>
+        <button class="btn btn-outline btn-sm" onclick="quickAsk('How to prepare for campus placements?')">Placements</button>
+        <button class="btn btn-outline btn-sm" onclick="quickAsk('I am stressed about exams, help me')">Managing Stress</button>
+        <button class="btn btn-outline btn-sm" onclick="quickAsk('Best way to learn Machine Learning and DSA?')">ML and DSA</button>
+      </div>
+    </div>
+
+    <!-- NOTICES -->
+    <div id="tab-notices" class="tab-pane" style="display:none">
+      <div class="section-header"><div class="section-title">Notices</div></div>
+      {% if notices %}
+        {% for n in notices %}
+        <div class="notice-item {{ 'pinned' if n.pinned }}">
+          <div class="notice-title">{% if n.pinned %}<span class="pin-tag">Pinned</span>{% endif %}{{ n.title }}</div>
+          <div class="notice-body">{{ n.body }}</div>
+          <div class="notice-meta">{{ n.author.name }} &middot; {{ n.created_at.strftime('%d %b %Y') }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="text-align:center;color:var(--sub);padding:40px;">No notices yet.</div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
